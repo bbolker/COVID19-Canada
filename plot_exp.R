@@ -74,19 +74,44 @@ propdat <- (expand.grid(newConfirmations=lseq(3),newTests=lseq(4))
     %>% mutate(prop=newConfirmations/newTests)
 )
 
+big_prov <- (dd_tests
+    %>% group_by(Province)
+    %>% summarise_if(is.numeric,max,na.rm=TRUE)
+    %>% arrange(newTests)
+    %>% filter(newTests>1000)
+    %>% pull(Province)
+)
+dd_big <- filter(dd_tests, Province %in% big_prov)
 c_brks <- c(0.005,0.01,0.05,0.1)
-test_plot <- (ggplot(dd_tests, aes(x=newTests,y=newConfirmations,
+## https://stackoverflow.com/questions/41324489/smoothing-continuous-2d-points
+sdf <- 6
+dd_smooth <- (dd_big
+    %>% na.omit()
+    %>% select(-prop)
+    %>% group_by(Province)
+    %>% mutate(t=as.numeric(Date-min(Date)),
+               newTests=smooth.spline(t, newTests, df = sdf)$y,
+               newConfirmations=smooth.spline(t, newConfirmations, df = sdf)$y
+               )
+)
+## ggplot(dd_smooth,aes(newTests,newConfirmations,colour=Province))+ geom_path()
+test_plot <- (ggplot(dd_big, aes(x=newTests,y=newConfirmations,
                                    colour=Province))
-    + geom_point()
-    + geom_path(alpha=0.1)
-    + scale_x_log10()
-    + scale_y_log10()
+    + geom_point(alpha=0.5, aes(shape=Province))
+    + geom_path(data=dd_smooth,lwd=1.5,alpha=0.8)
+    ## can't squish or we'll mess up contour calc
+    + scale_x_log10(limits=c(10,NA))
+    + scale_y_log10(limits=c(1,NA),oob=scales::squish)
     + geom_contour(data=propdat,aes(z=prop),breaks=c_brks,colour="gray")
     ## can we adjust placement/get fewer labels per contour?
     + geom_text_contour(data=propdat, aes(z=prop),breaks=c_brks,colour="blue")
+    + geom_dl(method="smart.grid",aes(label=Province))
+    + scale_color_discrete_qualitative()
+    + theme(legend.position="none")
 )
 print(test_plot)
-
+ggsave(test_plot, file="test_plot.pdf")
+## https://stackoverflow.com/questions/41324489/smoothing-continuous-2d-points
 
 ##     + geom_segment(data=ddslopes,aes(x=x,y=y,xend=xend,yend=yend,color=y))
 ##     + geom_text(data=ddslopes,aes(x=x,y=y,label=y,color=y),hjust=0.5)
