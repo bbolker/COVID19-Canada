@@ -6,8 +6,7 @@ library(gridExtra)
 library(colorspace)
 library(metR) ## contour labels (better choice?)
 
-L <- load(".clean.RData")
-
+L <- load("clean.RData")
 
 dd_long <- (ddclean
     ## FIXME: fragile, depends on order
@@ -20,6 +19,25 @@ dd_long <- (ddclean
     %>% ungroup()
 )
 
+ont <- (dd
+    %>% filter(Province=="ON")
+    %>% select(Date, confirmed_positive,total_testing)
+    ## presumptive positive is only there for the first few days, total of 1
+    %>% rename(cases="confirmed_positive",tests="total_testing")
+    %>% mutate_if(is.numeric,
+                  ~zoo::rollmean(c(NA,diff(.)),k=7,fill=NA,align="right"))
+    %>% mutate(pos_tests=cases/tests)
+    %>% tidyr:::pivot_longer(cols=-Date,names_to="var")
+)
+
+ggplot(ont,aes(Date,value,colour=var))+geom_line() +
+    geom_vline(xintercept=as.Date("2020-04-19"),lty=2)+
+    scale_colour_discrete_qualitative(guide=FALSE) +
+    labs(y="running weekly mean") +
+    facet_wrap(~var,scale="free") 
+
+ggsave("ont.pdf",width=10)
+               
 lab_data <- (dd_long
     %>% group_by(Province,name)
     %>% summarise(Date=max(Date),
