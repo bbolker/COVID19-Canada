@@ -48,7 +48,18 @@ plot_exp.Rout: clean.Rout plot_exp.R
 canada.Rout: clean.Rout canada.R
 	$(run-R)
 
-update: clean.Rout.csv.gp plot.png.gp plothosp.png.gp ggtoday.png.gp
+reset_bc: 
+	touch BC.R
+Ignore += ggpos.png ggbacklog.png ggdiffs.png
+
+ggpos.png: ontario.Rout
+ggbacklog.png: ontario.Rout
+ggdiffs.png: ontario.Rout
+
+ontario.Rout: ontario.R clean.Rout
+	$(run-R)
+
+update: reset_bc clean.Rout.csv.gp plot.png.gp plothosp.png.gp ggtoday.png.gp ggpos.png.gp ggbacklog.png.gp ggdiffs.png.gp
 
 ## git mv CAincidence.png plot.png clean.Rout.csv ON.Rout.pdf git_push ##
 ## git add plot.png CAincidence.png ON.Rout.pdf  ##
@@ -60,6 +71,7 @@ README.gh.html: README.md
 
 ON.Rout: ON.R
 	$(run-R)
+
 
 ### Makestuff
 
